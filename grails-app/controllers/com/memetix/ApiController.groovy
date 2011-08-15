@@ -16,15 +16,21 @@ class ApiController {
     def expand = {
         def futures = []
         for(shortUrl in asList(params.shortUrl)) {
+            final futureUrl = shortUrl
             futures.add(callAsync {
-                return unshortenService.unshorten(shortUrl)
+                try {
+                    return unshortenService.unshorten(futureUrl)
+                } catch(Exception e) {
+                    log.error "${e}"
+                }
             })
         }
         def eUrls = []
         for(future in futures) {
             eUrls.add(future.get())
         }
-        
+        println eUrls
+            
         def responseObj = [:]
         responseObj.status_code = 200
         responseObj.status_txt = "OK"
@@ -38,6 +44,6 @@ class ApiController {
         }
     }
     private asList(orig) {
-        return [orig].flatten()
+        return new HashSet([orig].flatten())
     }
 }
