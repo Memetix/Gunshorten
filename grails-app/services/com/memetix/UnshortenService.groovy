@@ -1,4 +1,6 @@
 package com.memetix
+import java.util.concurrent.Executors
+import java.util.concurrent.Callable
 
 class UnshortenService {
 
@@ -6,7 +8,14 @@ class UnshortenService {
     static urlRegex = /(http|ftp|https):\/\/[\w\-_]+(\.[\w\-_]+)+([\w\-\.,@?^=%&amp;:\/~\+#]*[\w\-\@?^=%&amp;\/~\+#])/
     def connectTimeoutInMilliseconds = 1000
     def readTimeoutInMilliseconds = 1000
-    def redis
+    def maxNumRedirects = 3
+    def redisService
+    def jobPool = Executors.newFixedThreadPool(100) 
+    
+    
+    def unshortenFuture(shortUrl) {
+        return jobPool.submit({return unshorten(shortUrl)} as Callable)
+    }
     
     /**
      * expandUrlsInText()                         
@@ -67,6 +76,9 @@ class UnshortenService {
      *               
      */
     def unshorten(linkString) {
+        return unshorten(linkString,0)
+    }
+    def unshorten(linkString,redirectCount) {
         //sprintln linkString
         log.debug "Unshortening Link ${linkString}"
         def link = linkString?.trim()
@@ -110,7 +122,8 @@ class UnshortenService {
                 } else {
                     location.status = UrlStatus.UNSHORTENED
                 }
-                location.fullUrl = unshorten(location.fullUrl)?.fullUrl?.trim()
+                if(redirectCount<maxNumRedirects)
+                    location.fullUrl = unshorten(location.fullUrl,++redirectCount)?.fullUrl?.trim()
             } else if(responseCode==404) {
                 location.fullUrl = link
                 location.status = UrlStatus.NOT_FOUND
@@ -145,20 +158,20 @@ class UnshortenService {
     def getCache(key) {
         //println key
         def location = [:]
-        location.fullUrl = redis.hget(key.toString(),"fullUrl")
-        location.shortUrl = redis.hget(key.toString(),"shortUrl")
-        location.status = redis.hget(key.toString(),"status")
-        location.cached = redis.hget(key.toString(),"cached")
-        redis.expire(key.toString(),3600)
+        location.fullUrl = redisService.hget(key.toString(),"fullUrl")
+        location.shortUrl = redisService.hget(key.toString(),"shortUrl")
+        location.status = redisService.hget(key.toString(),"status")
+        location.cached = redisService.hget(key.toString(),"cached")
+        redisService.expire(key.toString(),3600)
         return location
     }
     def putCache(location) {
         //println location
-        redis.hset(location.shortUrl.toString(),"fullUrl",location.fullUrl.toString())
-        redis.hset(location.shortUrl.toString(),"shortUrl",location.shortUrl.toString())
-        redis.hset(location.shortUrl.toString(),"status",location.status.toString())
-        redis.hset(location.shortUrl.toString(),"cached",location.cached.toString())
-        redis.expire(location.shortUrl.toString(),3600)
+        redisService.hset(location.shortUrl.toString(),"fullUrl",location.fullUrl.toString())
+        redisService.hset(location.shortUrl.toString(),"shortUrl",location.shortUrl.toString())
+        redisService.hset(location.shortUrl.toString(),"status",location.status.toString())
+        redisService.hset(location.shortUrl.toString(),"cached",location.cached.toString())
+        redisService.expire(location.shortUrl.toString(),3600)
     }
 }
 
