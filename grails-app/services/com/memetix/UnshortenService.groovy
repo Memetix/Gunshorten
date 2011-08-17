@@ -154,8 +154,10 @@ class UnshortenService {
     }
     
     def getCache(key) {
-        redisService.zincrby("urls:gets",1,"${key}")
-        redisService.expire(key.toString(),3600)
+        if(key) {
+            redisService.zincrby("urls:gets",1,key.toString())
+            redisService.expire(key.toString(),3600)
+        }
         return hydrateUrlMap(key)
     }
     
@@ -168,17 +170,21 @@ class UnshortenService {
     
     def hydrateUrlMap(key) {
         def location = [:]
-        location.fullUrl = redisService.hget(key.toString(),"fullUrl")
-        location.shortUrl = redisService.hget(key.toString(),"shortUrl")
-        location.status = redisService.hget(key.toString(),"status")
-        location.cached = redisService.exists(key.toString())
+        if(redisService.exists(key)) {
+            location.fullUrl    =   redisService.hget(key.toString(),"fullUrl")
+            location.shortUrl   =   redisService.hget(key.toString(),"shortUrl")
+            location.status     =   redisService.hget(key.toString(),"status")
+            location.cached     =   true
+        } else {
+            location.cached = false
+        }
         return location
     }
     
     def dehydrateUrlMap(location) {
-        redisService.hset(location.shortUrl.toString(),"fullUrl",location.fullUrl.toString())
-        redisService.hset(location.shortUrl.toString(),"shortUrl",location.shortUrl.toString())
-        redisService.hset(location.shortUrl.toString(),"status",location.status.toString())
+        redisService.hset(location.shortUrl.toString(),"fullUrl"    ,location.fullUrl.toString())
+        redisService.hset(location.shortUrl.toString(),"shortUrl"   ,location.shortUrl.toString())
+        redisService.hset(location.shortUrl.toString(),"status"     ,location.status.toString())
     }
 }
 
