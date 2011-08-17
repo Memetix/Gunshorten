@@ -93,7 +93,6 @@ class UnshortenService {
         def location = getCache(link.toString())
         
         if(location.fullUrl) {
-            location.cached = true
             log.debug "Fetched Link from cache - [${link} : ${location}]"
             return location
         } else {
@@ -150,28 +149,36 @@ class UnshortenService {
                 location.status = UrlStatus.UNKNOWN
             log.debug "Not Caching [${link} : ${location}]"
         }
-        location.cached = false
         location.status = location.status.toString()
         return location
     }
     
     def getCache(key) {
-        //println key
+        redisService.zincrby("urls:gets",1,"${key}")
+        redisService.expire(key.toString(),3600)
+        return hydrateUrlMap(key)
+    }
+    
+    def putCache(location) {
+            if(location) {
+                redisService.expire(location.shortUrl.toString(),3600)
+                dehydrateUrlMap(location)
+            }
+    }
+    
+    def hydrateUrlMap(key) {
         def location = [:]
         location.fullUrl = redisService.hget(key.toString(),"fullUrl")
         location.shortUrl = redisService.hget(key.toString(),"shortUrl")
         location.status = redisService.hget(key.toString(),"status")
-        location.cached = redisService.hget(key.toString(),"cached")
-        redisService.expire(key.toString(),3600)
+        location.cached = redisService.exists(key.toString())
         return location
     }
-    def putCache(location) {
-        //println location
+    
+    def dehydrateUrlMap(location) {
         redisService.hset(location.shortUrl.toString(),"fullUrl",location.fullUrl.toString())
         redisService.hset(location.shortUrl.toString(),"shortUrl",location.shortUrl.toString())
         redisService.hset(location.shortUrl.toString(),"status",location.status.toString())
-        redisService.hset(location.shortUrl.toString(),"cached",location.cached.toString())
-        redisService.expire(location.shortUrl.toString(),3600)
     }
 }
 
