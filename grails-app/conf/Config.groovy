@@ -9,6 +9,7 @@
 // if(System.properties["${appName}.config.location"]) {
 //    grails.config.locations << "file:" + System.properties["${appName}.config.location"]
 // }
+import grails.converters.JSON
 
 grails.project.groupId = appName // change this to alter the default package name and Maven publishing destination
 grails.mime.file.extensions = true // enables the parsing of file extensions from URLs into the request format
@@ -55,6 +56,10 @@ grails.exceptionresolver.params.exclude = ['password']
 environments {
     production {
         grails.serverURL = "http://gunshorten.cloudfoundry.com"
+        grails.redis.port = JSON.parse(System.getenv('VCAP_SERVICES') ?: '{}').'redis-2.2'?.get(0)?.credentials?.'port'
+        grails.redis.host = JSON.parse(System.getenv('VCAP_SERVICES')?: '{}').'redis-2.2'?.get(0)?.credentials?.'hostname'.toString()
+        grails.redis.password = JSON.parse(System.getenv('VCAP_SERVICES')?: '{}').'redis-2.2'?.get(0)?.credentials?.'password'.toString()
+    
     }
     development {
         grails.serverURL = "http://localhost:8080/${appName}"
@@ -88,10 +93,3 @@ log4j = {
 
     warn   'org.mortbay.log'
 }
-
-grails.plugin.cloudfoundry.username = "jonathan.griggs@gmail.com"
-grails.plugin.cloudfoundry.password = "WsbJaujA"
-
-grails.redis.pooled=true 
-grails.redis.resources=128 
-grails.redis.timeout=5000 
