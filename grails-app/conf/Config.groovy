@@ -59,10 +59,11 @@ environments {
         grails.redis.port = JSON.parse(System.getenv('VCAP_SERVICES') ?: '{}').'redis-2.2'?.get(0)?.credentials?.'port'
         grails.redis.host = JSON.parse(System.getenv('VCAP_SERVICES')?: '{}').'redis-2.2'?.get(0)?.credentials?.'hostname'.toString()
         grails.redis.password = JSON.parse(System.getenv('VCAP_SERVICES')?: '{}').'redis-2.2'?.get(0)?.credentials?.'password'.toString()
-    
+        gunshorten.cache.ttl = 60*60*24
     }
     development {
         grails.serverURL = "http://localhost:8080/${appName}"
+        gunshorten.cache.ttl = 120
     }
     test {
         grails.serverURL = "http://localhost:8080/${appName}"
@@ -96,4 +97,3 @@ log4j = {
 
 gunshorten.cache.maintenance.startDelay = 5000
 gunshorten.cache.maintenance.timeout = 1000
-gunshorten.cache.ttl = 120
