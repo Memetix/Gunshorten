@@ -1,6 +1,7 @@
 package com.memetix
 import java.util.concurrent.Executors
 import java.util.concurrent.Callable
+import org.codehaus.groovy.grails.commons.*
 
 class UnshortenService {
 
@@ -11,6 +12,7 @@ class UnshortenService {
     def maxNumRedirects = 3
     def redisService
     def jobPool = Executors.newFixedThreadPool(100) 
+    def ttl = ConfigurationHolder.config.gunshorten.cache.ttl ?: 3600
     
     
     def unshortenFuture(shortUrl) {
@@ -155,15 +157,20 @@ class UnshortenService {
     
     def getCache(key) {
         if(key) {
+            def currentTime = System.currentTimeMillis()
             redisService.zincrby("urls:gets",1,key.toString())
-            redisService.expire(key.toString(),3600)
+            redisService.zadd("urls:expires",System.currentTimeMillis()+(1000*ttl),key.toString())
+            redisService.expire(key.toString(),ttl)
+            redisService.hset(key.toString(),"lastSeen","${currentTime}")
         }
         return hydrateUrlMap(key)
     }
     
     def putCache(location) {
             if(location) {
-                redisService.expire(location.shortUrl.toString(),3600)
+                redisService.zincrby("urls:gets",1,location.shortUrl.toString())
+                redisService.zadd("urls:expires",System.currentTimeMillis()+(1000*ttl),location.shortUrl.toString())
+                redisService.expire(location.shortUrl.toString(),ttl)
                 dehydrateUrlMap(location)
             }
     }
@@ -174,6 +181,8 @@ class UnshortenService {
             location.fullUrl    =   redisService.hget(key.toString(),"fullUrl")
             location.shortUrl   =   redisService.hget(key.toString(),"shortUrl")
             location.status     =   redisService.hget(key.toString(),"status")
+            location.firstSeen     =   redisService.hget(key.toString(),"firstSeen")
+            location.lastSeen     =   redisService.hget(key.toString(),"lastSeen")
             location.cached     =   true
         } else {
             location.cached = false
@@ -182,10 +191,27 @@ class UnshortenService {
     }
     
     def dehydrateUrlMap(location) {
+        def currentTime = "${System.currentTimeMillis()}"
         redisService.hset(location.shortUrl.toString(),"fullUrl"    ,location.fullUrl.toString())
         redisService.hset(location.shortUrl.toString(),"shortUrl"   ,location.shortUrl.toString())
         redisService.hset(location.shortUrl.toString(),"status"     ,location.status.toString())
+        redisService.hset(location.shortUrl.toString(),"firstSeen"  ,currentTime)
+        redisService.hset(location.shortUrl.toString(),"lastSeen"   ,currentTime)
     }
-}
+    def pruneCache(threshold) {
+        def pruned = 0
 
+        for(url in redisService.zrangeByScore("urls:expires",0,threshold)) {
+            if(redisService.ttl("${url}")<0) {
+                redisService.withTransaction {
+                    redisService.zrem("urls:expires",url)
+                    redisService.zrem("urls:gets",url)
+                    pruned++
+                }
+            }
+        }
+        return pruned
+    }
+}           
+        
 enum UrlStatus {UNSHORTENED,NOT_FOUND,REDIRECTED,TIMED_OUT,INVALID,NOT_SHORTENED,UNKNOWN}

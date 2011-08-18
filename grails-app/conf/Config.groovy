@@ -93,3 +93,7 @@ log4j = {
 
     warn   'org.mortbay.log'
 }
+
+gunshorten.cache.maintenance.startDelay = 5000
+gunshorten.cache.maintenance.timeout = 1000
+gunshorten.cache.ttl = 120
