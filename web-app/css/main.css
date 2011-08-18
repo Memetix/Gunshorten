@@ -313,6 +313,7 @@ th.desc a {
   #results {
     font-family: 'Century Gothic', sans-serif;
     margin:0 auto;
+    margin-top: 10px;
     width:40%;
     background-color: #DCC9B8;
     border: 1px solid #ccc;
