@@ -9,6 +9,12 @@ grails.project.dependency.resolution = {
         // excludes 'ehcache'
     }
     log "warn" // log level of Ivy resolver, either 'error', 'warn', 'info', 'debug' or 'verbose'
+    plugins { 
+        compile ":redis-gorm:latest.integration"
+        compile ":cloud-foundry:latest.integration"
+        compile ":hibernate:latest.integration"
+        compile ":quartz:0.4.2"
+    } 
     repositories {
         grailsPlugins()
         grailsHome()

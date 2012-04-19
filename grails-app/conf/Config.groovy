@@ -56,9 +56,6 @@ grails.exceptionresolver.params.exclude = ['password']
 environments {
     production {
         grails.serverURL = "http://gunshorten.cloudfoundry.com"
-        grails.redis.port = JSON.parse(System.getenv('VCAP_SERVICES') ?: '{}').'redis-2.2'?.get(0)?.credentials?.'port'
-        grails.redis.host = JSON.parse(System.getenv('VCAP_SERVICES')?: '{}').'redis-2.2'?.get(0)?.credentials?.'hostname'.toString()
-        grails.redis.password = JSON.parse(System.getenv('VCAP_SERVICES')?: '{}').'redis-2.2'?.get(0)?.credentials?.'password'.toString()
         gunshorten.cache.ttl = 60*60*24
     }
     development {
@@ -97,3 +94,6 @@ log4j = {
 
 gunshorten.cache.maintenance.startDelay = 5000
 gunshorten.cache.maintenance.timeout = 1000
+
+grails.plugin.cloudfoundry.username = "jonathan.griggs@gmail.com"
+grails.plugin.cloudfoundry.password = "WsbJaujA"
